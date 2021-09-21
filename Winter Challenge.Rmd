@@ -15,7 +15,9 @@ On Shopify, we have exactly 100 sneaker shops, and each of these shops sells onl
 ### Answers 1A
 Think about what could be going wrong with our calculation. Think about a better way to evaluate this data. 
 
-A quick glimpse of the dataset shows the bulk orders, which can significantly distort the average order value.
+A quick glimpse of the dataset shows the bulk orders, which can significantly distort the average order value. In particular, shop 42 sells bulk orders worth 704,000 dollars to user 607. This is a big outlier we should filter from our AOV calculation. The new AOV is 754.1 dollars. 
+
+Now we also want to look at the selling prices. Shop 78 sells very expensive sneakers worth 25,725 dollars a pair, and the next most expensive shoe costs 352 dollars, which is a lot less expensive. If we filter out shop 78 in addition to shop 42, then the new AOV is 302.6 dollars. 
 
 ```{r}
 library(googlesheets4) 
@@ -26,25 +28,32 @@ gs4_deauth()
 sneakershop <- read_sheet("16i38oonuX1y1g7C_UAmiK9GkY7cS-64DfiDMNiR41LM",
 sheet="Sheet1",)
 
-#[,1:4] # skip = 1, keeping only some columns, skip row 1
-
 # a quick ordering of order in descending dollar amount
 sneakershop %>%
   arrange(desc(order_amount))
 
+# filtering out the 700k orders 
 sneakershop %>%
-  filter(order_amount < 100000) %>%
+  filter(order_amount < 160000) %>%
   summarize(AOV = mean(order_amount))
 
+# figure out which shoes are expensive per pair
+sneakershop %>%
+  mutate(price_level = order_amount / total_items) %>%
+  filter(order_amount < 160000) %>%
+  filter(price_level < 25725) %>%
+  summarize(AOV = mean(order_amount))
 ```
 
-### Part 1B
+### Part 1B & 1C
 
 What metric would you report for this dataset? What is its value?
 
+I would look at the median order amount, because it shows how much customers in the middle of the shopping spectrum spent. Here the median order amount is 284 dollars and the median total items bought is 2. This makes sense, as most online shoppers usually buy only a few pairs of sneakers at a time and sneaker prices generally fall within the low 3-digit range.
+
 ```{r}
 sneakershop %>%
-  summarize(MedOrd = median(order_amount))
+  summarize(MedOrd = median(order_amount), MedItem = median(total_items))
 ```
 
 ## Part 2
