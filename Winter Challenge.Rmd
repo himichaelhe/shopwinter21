@@ -1,5 +1,5 @@
 ---
-title: "Winter Challenge"
+title: "Winter 2022 Challenge"
 author: "Michael He"
 date: "9/20/2021"
 output: pdf_document
@@ -7,6 +7,8 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
 ```
 
 ## Task 1
@@ -15,15 +17,14 @@ On Shopify, we have exactly 100 sneaker shops, and each of these shops sells onl
 ### Answers 1A
 Think about what could be going wrong with our calculation. Think about a better way to evaluate this data. 
 
-A quick glimpse of the dataset shows the bulk orders, which can significantly distort the average order value. In particular, shop 42 sells bulk orders worth 704,000 dollars to user 607. This is a big outlier we should filter from our AOV calculation. The new AOV is 754.1 dollars. 
+A quick glimpse of the dataset shows some massive bulk orders, which can significantly distort the average order value. In particular, Shop 42 sells bulk orders worth 704,000 dollars to user 607. This is a big outlier we should filter from our AOV calculation. The new adjusted AOV is about 754 dollars. This is much less than 3145, but is still atypical for online sneaker orders.
 
-Now we also want to look at the selling prices. Shop 78 sells very expensive sneakers worth 25,725 dollars a pair, and the next most expensive shoe costs 352 dollars, which is a lot less expensive. If we filter out shop 78 in addition to shop 42, then the new AOV is 302.6 dollars. 
+We also want to look at the selling prices, in case some sneakers are much more expensive than other brands. For example, Shop 78 sells very expensive sneakers worth 25,725 dollars each pair and the second most expensive shoe only costs 352 dollars! So orders from Shop 78 are also outliers in a way. If we filter out Shop 78 in addition to Shop 42, then the new AOV is 302.6 dollars. This is now more typical of a sneaker ecommerce platform that's not solely focused on rare items or bulk orders.
 
 ```{r}
 library(googlesheets4) 
-library(tidyverse)
 
-# downloading the spreadsheet completely
+# download the spreadsheet completely
 gs4_deauth()
 sneakershop <- read_sheet("16i38oonuX1y1g7C_UAmiK9GkY7cS-64DfiDMNiR41LM",
 sheet="Sheet1",)
@@ -32,12 +33,12 @@ sheet="Sheet1",)
 sneakershop %>%
   arrange(desc(order_amount))
 
-# filtering out the 700k orders 
+# filtering out the 700k orders, then find AOV 
 sneakershop %>%
   filter(order_amount < 160000) %>%
   summarize(AOV = mean(order_amount))
 
-# figure out which shoes are expensive per pair
+# find out which shoes are expensive with price_level
 sneakershop %>%
   mutate(price_level = order_amount / total_items) %>%
   filter(order_amount < 160000) %>%
@@ -46,36 +47,79 @@ sneakershop %>%
 ```
 
 ### Part 1B & 1C
-
 What metric would you report for this dataset? What is its value?
 
 I would look at the median order amount, because it shows how much customers in the middle of the shopping spectrum spent. Here the median order amount is 284 dollars and the median total items bought is 2. This makes sense, as most online shoppers usually buy only a few pairs of sneakers at a time and sneaker prices generally fall within the low 3-digit range.
 
 ```{r}
+# find the median of order_amount and total_items ordered
 sneakershop %>%
   summarize(MedOrd = median(order_amount), MedItem = median(total_items))
 ```
 
-## Part 2
-
+## Task 2
 For this question you’ll need to use SQL. Follow this link to access the data set required for the challenge. Please use queries to answer the following questions. Paste your queries along with your final numerical answers below.
 
 https://www.w3schools.com/SQL/TRYSQL.ASP?FILENAME=TRYSQL_SELECT_ALL
 
 ### Answer Part 2A 
-
 How many orders were shipped by Speedy Express in total?
 
+We first go to Orders, because it contains the shipping data. We double check with Shippers to make sure Speedy Express's Shipper ID is 1. THe SQL query and result are below. There are 54 orders shipped by Speedy Express. 
+
+```{r}
+# the SQL query is below
+
+# SELECT COUNT(ShipperID)
+# FROM Orders
+# WHERE ShipperID = 1;
+
+# result:
+# COUNT(ShipperID)
+# 54
+```
 
 ### Answer Part 2B
-
 What is the last name of the employee with the most orders?
 
+We first go to Orders, because it contains the employee data. We run the SQL query with a COUNT function and the result says Employee 4 ships the most orders (since the query is in descending order). We check with Employees and find Margaret Peacock as Employee number 4. So Peacock is the last name of the employee with the most orders.
+
+```{r}
+
+# SELECT EmployeeID
+# FROM Orders
+# GROUP BY EmployeeID
+# ORDER BY COUNT(*) DESC
+# LIMIT    1;
+
+# result:
+# EmployeeID
+# 4
+```
 
 ### Answer Part 2C
-
 What product was ordered the most by customers in Germany?
 
+We need to work with multiple tables. We first join the column CustomerID from Customers to the Orders table. Then we join the OrderID column from Order to the OrderDetails table. We join the ProductID column from the OrdersDetails table to the Products table. Now we have all the columns and variables together.
 
+We use a WHERE statement to filter out customers from Germany, group all the names of the products German customers have ordered, and calculate the total of each product (at the top of code chunk). Now we can order the total quantity per item in a descending order. Boston Crab Meat is the number one selling item in Germany, with 160 units!
 
+```{r}
+# SELECT ProductName,
+# SUM(Quantity) AS SumAmt
+
+# FROM Customers
+# LEFT JOIN Orders ON Customers.CustomerID = Orders.CustomerID
+# LEFT JOIN OrderDetails ON Orders.OrderID = OrderDetails.OrderID
+# LEFT JOIN Products ON OrderDetails.ProductID = Products.ProductID
+
+# WHERE Customers.Country = 'Germany'
+# GROUP BY Products.ProductName
+# ORDER BY SumAmt DESC
+# LIMIT 1
+
+# result:
+# ProductName	SumAmt
+# Boston Crab Meat	160
+```
 
