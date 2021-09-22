@@ -1,2 +1,2 @@
-# shopwinter21
-Data Challenge for Winter 2021 application
+# shopwinter22
+Data Challenge for Winter 2022 application
